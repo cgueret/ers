@@ -22,7 +22,7 @@ class LocalModelBase(object):
 	def add_data(self, couch_doc, cache):
 		pass
 	
-	def delete_property(self, couch_doc, prop):
+	def delete_property(self, couch_doc, prop, value):
 		pass
 	
 	def add_property(self, couch_doc, prop, value):
@@ -82,8 +82,12 @@ class ModelS(LocalModelBase):
 	def couch_key(self, cache_key, graph):
 		return "{0} {1}".format(graph, cache_key)
 	
-	def delete_property(self, couch_doc, prop):
-		couch_doc.pop(prop, [])
+	def delete_property(self, couch_doc, prop, value):
+		if prop not in couch_doc:
+			return
+		
+		couch_doc[prop] = filter(lambda a: a != value, couch_doc[prop])
+		#couch_doc.pop(prop, [])
 	
 	def add_property(self, couch_doc, prop, value):
 		if prop not in couch_doc:

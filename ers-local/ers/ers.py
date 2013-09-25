@@ -438,6 +438,19 @@ class Entity():
 			return
 		self._model.add_property(document, property, value)
 	
+	def delete_property(self, property, value):
+		'''
+		Delete a property to the description of the entity
+		TODO: we can only edit the local or private documents
+		'''
+		document = None
+		for doc in self._documents:
+			if doc['source'] == 'public':
+				document = doc['document']
+		if document == None:
+			return
+		self._model.delete_property(document, property, value)
+		
 	def get_properties(self):
 		'''
 		Get the aggregated properties out of all the individual documents
