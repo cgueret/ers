@@ -176,11 +176,11 @@ class ERSReadOnly(object):
 					results.append(document['@id'])
 		return results
 	
-		#if value is None:
-		#	result = [tuple(r['value']) for r in self.public_db.view('index/by_property_value', startkey=[prop], endkey=[prop, {}])]
-		#else:
-		#	result = [tuple(r['value']) for r in self.public_db.view('index/by_property_value', key=[prop, value])]
-		#return result      
+		# if value is None:
+		# 	result = [tuple(r['value']) for r in self.public_db.view('index/by_property_value', startkey=[prop], endkey=[prop, {}])]
+		# else:
+		# 	result = [tuple(r['value']) for r in self.public_db.view('index/by_property_value', key=[prop, value])]
+		# return result      
 	
 	def exist(self, subject, graph):
 		return self.public_db.doc_exist(self.model.couch_key(subject, graph))
@@ -221,9 +221,15 @@ class ERSReadWrite(ERSReadOnly):
 		self.model = model
 		
 		# Pre-populate the public DB if requested
-		for doc in self.model.initial_docs():
+		for doc in self.model.initial_docs_public():
 			if not self.public_db.doc_exist(doc['_id']):
 				self.public_db.save_doc(doc)
+		for doc in self.model.initial_docs_cache():
+			if not self.cache_db.doc_exist(doc['_id']):
+				self.cache_db.save_doc(doc)
+		for doc in self.model.initial_docs_private():
+			if not self.private_db.doc_exist(doc['_id']):
+				self.private_db.save_doc(doc)
 
 	def add_data(self, s, p, o, g):
 		"""Adds the value for the given property in the given entity. Create the entity if it does not exist yet)"""
@@ -318,6 +324,34 @@ class ERSLocal(ERSReadWrite):
 		'''
 		# Get the UUID assigned to CouchDB
 		return self.server.info()['uuid']
+	
+	def is_cached(self, entity_name):
+		'''
+		Check if an entity is listed as being cached
+		'''
+		entity_names_doc = self.cache_db.open_doc('_design/content')
+		return entity_name in entity_names_doc['entity_name']
+
+	def cache_entity(self, entity):
+		'''
+		Place an entity in the cache. This mark the entity as being
+		cached and store the currently loaded documents in the cache.
+		Later on, ERS will automatically update the description of
+		this entity with new / updated documents
+		@param entity An entity object
+		'''
+		# No point in caching it again
+		if self.is_cached(entity.get_name()):
+			return
+		
+		# Add the entity to the list
+		entity_names_doc = self.cache_db.open_doc('_design/content')
+		entity_names_doc['entity_name'].append(entity.get_name())
+		self.cache_db.save_doc(entity_names_doc)
+		
+		# Save all its current documents in the cache
+		for doc in entity.get_raw_documents():
+			self.cache_db.save_doc(doc)
 		
 	def get_annotation(self, entity):
 		result = self.get_data(entity)
@@ -467,9 +501,27 @@ class Entity():
 		
 	def get_documents(self):
 		'''
-		Return all the documents associated to this entity
+		Return all the documents associated to this entity and their source
 		'''
 		return self._documents
+	
+	def get_documents_ids(self):
+		'''
+		Get the identifiers of all the documents associated to the entity
+		'''
+		results = []
+		for doc in self._documents:
+			results.append(doc['document']['_id'])
+		return results
+		 
+	def get_raw_documents(self):
+		'''
+		Get the content of all the documents associated to the entity
+		'''
+		results = []
+		for doc in self._documents:
+			results.append(doc['document'])
+		return results
 	
 	def get_name(self):
 		'''

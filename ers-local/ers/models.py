@@ -10,6 +10,9 @@ class LocalModelBase(object):
 	def state_doc(self):
 		return {"_id": "_design/state", "peers": {}}
 	
+	def content_doc(self):
+		return {"_id": "_design/content", 'entity_name': []}
+	
 	def cache_key(self, couch_key):
 		return couch_key
 	
@@ -28,8 +31,14 @@ class LocalModelBase(object):
 	def add_property(self, couch_doc, prop, value):
 		pass
 	
-	def initial_docs(self):
+	def initial_docs_public(self):
+		return [ self.index_doc() ]
+	
+	def initial_docs_private(self):
 		return [ self.index_doc(), self.state_doc() ]
+	
+	def initial_docs_cache(self):
+		return [ self.index_doc(), self.content_doc() ]
 
 
 class ModelS(LocalModelBase):
